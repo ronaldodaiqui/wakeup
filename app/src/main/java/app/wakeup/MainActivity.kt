@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -72,7 +73,10 @@ import kotlinx.coroutines.delay
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         AlarmStore.init(this)
         setContent { WakeTheme { AppRoot() } }
     }
@@ -134,6 +138,22 @@ private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSetup: () ->
     val now = rememberNow()
     val setupOk = remember(resumeTick) { Setup.essentialOk(ctx) }
     val next = remember(alarms, now) { Scheduler.nextRing(alarms) }
+    var typingFor by remember { mutableStateOf<Alarm?>(null) }
+
+    typingFor?.let { a ->
+        TimeEntryDialog(
+            hour = a.hour, minute = a.minute,
+            onDone = { h, m ->
+                Scheduler.cancelAll(ctx, a.id)
+                AlarmStore.resetSnoozes(a.id)
+                val updated = AlarmStore.put(a.copy(hour = h, minute = m, enabled = true))
+                Scheduler.schedule(ctx, updated)
+                ringsInToast(ctx, updated)
+                typingFor = null
+            },
+            onDismiss = { typingFor = null },
+        )
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -199,6 +219,7 @@ private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSetup: () ->
                 AlarmCard(
                     a, now,
                     onClick = { onEdit(a) },
+                    onTimeClick = { typingFor = a },
                     onToggle = { on ->
                         val updated = AlarmStore.put(a.copy(enabled = on))
                         if (on) {
@@ -216,7 +237,7 @@ private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSetup: () ->
 }
 
 @Composable
-private fun AlarmCard(a: Alarm, now: Long, onClick: () -> Unit, onToggle: (Boolean) -> Unit) {
+private fun AlarmCard(a: Alarm, now: Long, onClick: () -> Unit, onTimeClick: () -> Unit, onToggle: (Boolean) -> Unit) {
     val ctx = LocalContext.current
     val (t, ap) = timeParts(ctx, a.hour, a.minute)
     val faded = if (a.enabled) 1f else 0.45f
@@ -227,7 +248,10 @@ private fun AlarmCard(a: Alarm, now: Long, onClick: () -> Unit, onToggle: (Boole
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.Bottom) {
+            Row(
+                Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onTimeClick),
+                verticalAlignment = Alignment.Bottom,
+            ) {
                 Text(t, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = faded))
                 if (ap.isNotEmpty()) {
                     Text(" $ap", fontSize = 16.sp, color = Dim.copy(alpha = faded), modifier = Modifier.padding(bottom = 7.dp))

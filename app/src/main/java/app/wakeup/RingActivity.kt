@@ -7,6 +7,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -74,7 +75,10 @@ class RingActivity : ComponentActivity() {
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
         }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         if (AlarmService.state.value == null) {
             finish()
             return
@@ -274,7 +278,7 @@ private fun CheckFace(s: RingState, onAwake: () -> Unit) {
         Text("Still awake?", fontSize = 40.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text("The alarm rings again in", color = Dim)
-        Text("$secs", fontSize = 96.sp, fontWeight = FontWeight.Bold, color = Sun)
+        Text("$secs", fontSize = 96.sp, fontWeight = FontWeight.Bold, color = Lav)
         Spacer(Modifier.height(32.dp))
         Button(
             onClick = onAwake,

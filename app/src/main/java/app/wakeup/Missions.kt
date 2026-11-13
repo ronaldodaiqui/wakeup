@@ -148,7 +148,7 @@ private fun MissionHeader(title: String, progress: String) {
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, color = Dim)
         if (progress.isNotEmpty()) {
-            Text(progress, style = MaterialTheme.typography.titleLarge, color = Sun, fontWeight = FontWeight.SemiBold)
+            Text(progress, style = MaterialTheme.typography.titleLarge, color = Lav, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -212,34 +212,11 @@ fun MathMission(level: Int, count: Int, onActivity: () -> Unit, onDone: () -> Un
             Text(entry.ifEmpty { "?" }, fontSize = 40.sp, color = if (entry.isEmpty()) Dim else entryColor)
         }
         Spacer(Modifier.weight(1f))
-        val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "✓")
-        keys.chunked(3).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEach { k ->
-                    val isOk = k == "✓"
-                    Box(
-                        Modifier.weight(1f).height(68.dp).clip(RoundedCornerShape(16.dp))
-                            .background(if (isOk) Sun else Card)
-                            .clickable {
-                                onActivity()
-                                when (k) {
-                                    "⌫" -> entry = entry.dropLast(1)
-                                    "✓" -> submit()
-                                    else -> if (entry.length < 6) entry += k
-                                }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        when (k) {
-                            "⌫" -> Icon(Icons.AutoMirrored.Filled.Backspace, "Delete")
-                            "✓" -> Icon(Icons.Filled.Check, "Enter", tint = Color(0xFF2A1600))
-                            else -> Text(k, fontSize = 28.sp, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-        }
+        NumberPad(
+            onDigit = { onActivity(); if (entry.length < 6) entry += it },
+            onDelete = { onActivity(); entry = entry.dropLast(1) },
+            onEnter = { submit() },
+        )
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -588,5 +565,5 @@ fun MissionBadge(m: Mission, modifier: Modifier = Modifier) {
     Box(
         modifier.size(28.dp).clip(CircleShape).background(CardHi),
         contentAlignment = Alignment.Center,
-    ) { Icon(m.icon, null, tint = Sun, modifier = Modifier.size(16.dp)) }
+    ) { Icon(m.icon, null, tint = Lav, modifier = Modifier.size(16.dp)) }
 }

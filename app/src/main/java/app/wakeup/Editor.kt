@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -88,6 +90,7 @@ fun AlarmEditor(initial: Alarm, isNew: Boolean, close: () -> Unit) {
     var a by remember { mutableStateOf(initial) }
     var scanning by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var typing by remember { mutableStateOf(false) }
     val now = rememberNow()
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
@@ -147,7 +150,16 @@ fun AlarmEditor(initial: Alarm, isNew: Boolean, close: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
             )
 
-            TimeWheels(a.hour, a.minute) { h, m -> a = a.copy(hour = h, minute = m) }
+            TimeWheels(a.hour, a.minute, onTap = { typing = true }) { h, m -> a = a.copy(hour = h, minute = m) }
+            Row(
+                Modifier.fillMaxWidth().clickable { typing = true }.padding(bottom = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Dialpad, null, tint = Lav, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Tap the time to type it", color = Dim, style = MaterialTheme.typography.bodySmall)
+            }
 
             // Quick picks: "in 8 h" etc. (from right now, rings once)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -216,7 +228,7 @@ fun AlarmEditor(initial: Alarm, isNew: Boolean, close: () -> Unit) {
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Filled.MusicNote, null, tint = Sun)
+                Icon(Icons.Filled.MusicNote, null, tint = Lav)
                 Spacer(Modifier.width(12.dp))
                 Text(soundName, modifier = Modifier.weight(1f))
                 Text("Change", color = Dim)
@@ -282,6 +294,14 @@ fun AlarmEditor(initial: Alarm, isNew: Boolean, close: () -> Unit) {
                 Toast.makeText(ctx, "Code saved", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { scanning = false },
+        )
+    }
+
+    if (typing) {
+        TimeEntryDialog(
+            hour = a.hour, minute = a.minute,
+            onDone = { h, m -> a = a.copy(hour = h, minute = m); typing = false },
+            onDismiss = { typing = false },
         )
     }
 
@@ -431,7 +451,7 @@ private fun RegisterCodeDialog(onCode: (String) -> Unit, onDismiss: () -> Unit) 
 // ---------------- Time wheels ----------------
 
 @Composable
-private fun TimeWheels(hour: Int, minute: Int, onChange: (Int, Int) -> Unit) {
+private fun TimeWheels(hour: Int, minute: Int, onTap: () -> Unit, onChange: (Int, Int) -> Unit) {
     val ctx = LocalContext.current
     val h24 = remember { is24h(ctx) }
     val itemH = 64.dp
@@ -443,16 +463,16 @@ private fun TimeWheels(hour: Int, minute: Int, onChange: (Int, Int) -> Unit) {
         Box(Modifier.fillMaxWidth().height(itemH).clip(RoundedCornerShape(18.dp)).background(Card))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
             if (h24) {
-                WheelPicker(24, hour, { onChange(it, latestMinute) }, { "%02d".format(it) }, itemH, 96.dp)
+                WheelPicker(24, hour, { onChange(it, latestMinute) }, { "%02d".format(it) }, itemH, 96.dp, onTap)
             } else {
                 WheelPicker(
                     12, hour % 12,
                     { v -> onChange(v + if (latestHour >= 12) 12 else 0, latestMinute) },
-                    { if (it == 0) "12" else "$it" }, itemH, 96.dp,
+                    { if (it == 0) "12" else "$it" }, itemH, 96.dp, onTap,
                 )
             }
             Text(":", fontSize = 44.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
-            WheelPicker(60, minute, { onChange(latestHour, it) }, { "%02d".format(it) }, itemH, 96.dp)
+            WheelPicker(60, minute, { onChange(latestHour, it) }, { "%02d".format(it) }, itemH, 96.dp, onTap)
             if (!h24) {
                 Spacer(Modifier.width(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -485,6 +505,7 @@ private fun WheelPicker(
     label: (Int) -> String,
     itemH: Dp,
     width: Dp,
+    onTap: () -> Unit,
 ) {
     val loops = 400
     val state = rememberLazyListState(initialFirstVisibleItemIndex = (loops / 2) * count + value - 1)
@@ -524,7 +545,14 @@ private fun WheelPicker(
     ) {
         items(count * loops) { i ->
             val selected = i == centerIndex
-            Box(Modifier.height(itemH).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.height(itemH).fillMaxWidth().clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onTap,
+                ),
+                contentAlignment = Alignment.Center,
+            ) {
                 Text(
                     label(i.mod(count)),
                     fontSize = if (selected) 48.sp else 34.sp,

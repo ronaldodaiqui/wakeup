@@ -67,4 +67,20 @@ class AlarmTest {
         assertEquals("45 min", durationText(45 * 60_000L - 5_000))
         assertEquals("8 h", durationText(8 * 3_600_000L))
     }
+
+    @Test
+    fun typedTimes() {
+        assertEquals(7 to 0, parseTyped("7"))
+        assertEquals(12 to 0, parseTyped("12"))
+        assertEquals(7 to 30, parseTyped("730"))
+        assertEquals(12 to 34, parseTyped("1234"))
+        assertEquals(19 to 5, parseTyped("1905"))
+        assertEquals(null, parseTyped("1275"))
+        assertEquals(null, parseTyped("2500"))
+        assertEquals(19, typedTo24(7, pm = true, use24 = false))
+        assertEquals(0, typedTo24(12, pm = false, use24 = false))
+        assertEquals(12, typedTo24(12, pm = true, use24 = false))
+        assertEquals(19, typedTo24(19, pm = false, use24 = false))
+        assertEquals(7, typedTo24(7, pm = true, use24 = true))
+    }
 }

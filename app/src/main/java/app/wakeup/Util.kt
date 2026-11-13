@@ -10,7 +10,10 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.text.format.DateFormat
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -23,40 +26,54 @@ import java.util.Locale
 
 // ---------------- Look ----------------
 
-val Sun = Color(0xFFFFA24C)
-val SunSoft = Color(0xFFFFD9A8)
-val Night = Color(0xFF121014)
-val Card = Color(0xFF1E1A22)
-val CardHi = Color(0xFF2A2430)
-val Dim = Color(0xFF9A93A3)
-val Bad = Color(0xFFFF6B6B)
-val Good = Color(0xFF6BD49A)
+// Dark, slightly lavender night with soft pastel accents.
+val Sun = Color(0xFFFFBFA3)      // peach: the main accent
+val SunSoft = Color(0xFFFFE3D6)  // pale peach
+val Lav = Color(0xFFC9B8FF)      // lavender: missions and secondary accents
+val Night = Color(0xFF15141C)
+val Card = Color(0xFF1F1E29)
+val CardHi = Color(0xFF2A2936)
+val Ink = Color(0xFFECE9F5)      // main text
+val Dim = Color(0xFFA29EB4)      // secondary text
+val OnAccent = Color(0xFF33202C) // text on peach
+val Bad = Color(0xFFFF9DAE)      // rose
+val Good = Color(0xFFA6E3C6)     // mint
 
 @Composable
 fun WakeTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = Sun,
-            onPrimary = Color(0xFF2A1600),
-            primaryContainer = Color(0xFF4A2C10),
+            onPrimary = OnAccent,
+            primaryContainer = Color(0xFF3B2C38),
             onPrimaryContainer = SunSoft,
-            secondary = SunSoft,
+            secondary = Lav,
+            onSecondary = Color(0xFF2A2140),
+            secondaryContainer = Color(0xFF332D4A),
+            onSecondaryContainer = Color(0xFFE6DEFF),
+            tertiary = Good,
             background = Night,
-            onBackground = Color(0xFFEDE8F2),
+            onBackground = Ink,
             surface = Night,
-            onSurface = Color(0xFFEDE8F2),
+            onSurface = Ink,
             surfaceVariant = Card,
             onSurfaceVariant = Dim,
             surfaceContainer = Card,
             surfaceContainerHigh = CardHi,
             surfaceContainerHighest = CardHi,
             surfaceContainerLow = Card,
-            outline = Color(0xFF4A4352),
-            outlineVariant = Color(0xFF332D3A),
+            surfaceContainerLowest = Night,
+            inverseSurface = Ink,
+            inverseOnSurface = Night,
+            outline = Color(0xFF3E3C4C),
+            outlineVariant = Color(0xFF2E2D3A),
             error = Bad,
+            onError = OnAccent,
         ),
-        content = content,
-    )
+    ) {
+        // Without a Surface, plain Text defaults to black. This makes every screen light-on-dark.
+        Surface(Modifier.fillMaxSize(), color = Night, contentColor = Ink, content = content)
+    }
 }
 
 // ---------------- Time text ----------------

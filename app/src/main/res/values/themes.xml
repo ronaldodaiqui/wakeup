@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#121014</color>
-    <color name="icon_bg">#1B1530</color>
+    <color name="bg">#15141C</color>
+    <color name="icon_bg">#1F1D2B</color>
 
     <style name="Theme.Wakeup" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
