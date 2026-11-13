@@ -234,6 +234,11 @@ fun AlarmEditor(initial: Alarm, isNew: Boolean, close: () -> Unit) {
                 Text("Change", color = Dim)
             }
             ToggleRow("Vibrate", null, a.vibrate) { a = a.copy(vibrate = it) }
+            ToggleRow(
+                "Gentle start",
+                "Starts quiet and gets louder over 30 seconds.",
+                a.gentle,
+            ) { a = a.copy(gentle = it) }
 
             SectionTitle("Snooze")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

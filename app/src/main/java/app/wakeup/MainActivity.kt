@@ -38,7 +38,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -94,25 +93,38 @@ class MainActivity : ComponentActivity() {
 private sealed interface Screen {
     data object List : Screen
     data class Edit(val alarm: Alarm, val isNew: Boolean) : Screen
-    data object Setup : Screen
+    data object Settings : Screen
+    /** Permissions page; [back] is where Back goes. */
+    data class Permissions(val back: Screen) : Screen
 }
 
 @Composable
 private fun AppRoot() {
-    var screen by remember { mutableStateOf<Screen>(if (AlarmStore.setupSeen) Screen.List else Screen.Setup) }
+    var screen by remember {
+        mutableStateOf<Screen>(if (AlarmStore.setupSeen) Screen.List else Screen.Permissions(back = Screen.List))
+    }
     when (val s = screen) {
         Screen.List -> AlarmList(
             onNew = { screen = Screen.Edit(AlarmStore.template(), isNew = true) },
             onEdit = { screen = Screen.Edit(it, isNew = false) },
-            onSetup = { screen = Screen.Setup },
+            onSettings = { screen = Screen.Settings },
+            onPermissions = { screen = Screen.Permissions(back = Screen.List) },
         )
         is Screen.Edit -> {
             BackHandler { screen = Screen.List }
             AlarmEditor(s.alarm, s.isNew, close = { screen = Screen.List })
         }
-        Screen.Setup -> {
-            BackHandler { AlarmStore.setupSeen = true; screen = Screen.List }
-            SetupScreen(done = { AlarmStore.setupSeen = true; screen = Screen.List })
+        Screen.Settings -> {
+            BackHandler { screen = Screen.List }
+            SettingsScreen(
+                back = { screen = Screen.List },
+                onPermissions = { screen = Screen.Permissions(back = Screen.Settings) },
+            )
+        }
+        is Screen.Permissions -> {
+            val leave = { AlarmStore.setupSeen = true; screen = s.back }
+            BackHandler { leave() }
+            SetupScreen(done = leave)
         }
     }
 }
@@ -131,7 +143,7 @@ fun ringsInToast(ctx: android.content.Context, a: Alarm) {
 }
 
 @Composable
-private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSetup: () -> Unit) {
+private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSettings: () -> Unit, onPermissions: () -> Unit) {
     val ctx = LocalContext.current
     val alarms by AlarmStore.alarms.collectAsStateWithLifecycle()
     var resumeTick by remember { mutableIntStateOf(0) }
@@ -140,8 +152,6 @@ private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSetup: () ->
     val setupOk = remember(resumeTick) { Setup.essentialOk(ctx) }
     val next = remember(alarms, now) { Scheduler.nextRing(alarms) }
     var typingFor by remember { mutableStateOf<Alarm?>(null) }
-    var pickingColors by remember { mutableStateOf(false) }
-    if (pickingColors) ColorPickerDialog(onDismiss = { pickingColors = false })
 
     typingFor?.let { a ->
         TimeEntryDialog(
@@ -193,15 +203,14 @@ private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSetup: () ->
                             )
                         }
                     }
-                    IconButton(onClick = { pickingColors = true }) { Icon(Icons.Filled.Palette, "Colors", tint = Dim) }
-                    IconButton(onClick = onSetup) { Icon(Icons.Filled.Settings, "Setup", tint = Dim) }
+                    IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Settings", tint = Dim) }
                 }
             }
             if (!setupOk) {
                 item {
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                            .background(Bad.copy(alpha = 0.15f)).clickable(onClick = onSetup).padding(16.dp),
+                            .background(Bad.copy(alpha = 0.15f)).clickable(onClick = onPermissions).padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(Icons.Filled.Warning, null, tint = Bad)
@@ -332,7 +341,7 @@ private fun SetupScreen(done: () -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = done) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-            Text("Make sure it rings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Permissions", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         }
         Text(
             "Android can block alarm apps in a few ways. Allow these once and Wakeup will ring every time.",

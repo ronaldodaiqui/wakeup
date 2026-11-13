@@ -115,6 +115,7 @@ object Scheduler {
             if (snoozeAt > now) setAt(ctx, a.id, KIND_SNOOZE, snoozeAt)
             else if (snoozeAt != 0L) AlarmStore.setSnoozeUntil(a.id, 0)
         }
+        Bedtime.refresh(ctx)
     }
 
     /** The soonest upcoming ring across all alarms (including snoozes), or null. */

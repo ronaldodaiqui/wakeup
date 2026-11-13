@@ -124,6 +124,9 @@ class AlarmService : Service() {
     private var savedVolume = -1
     private var sounding = false
     private var muted = false
+    /** 0..1 loudness from gentle start (1 = full). */
+    private var level = 1f
+    private var rampStart = 0L
 
     private val audio by lazy { getSystemService(AudioManager::class.java) }
 
@@ -140,6 +143,17 @@ class AlarmService : Service() {
         }
     }
 
+    /** Gentle start: quiet at first, full volume after GENTLE_MS. Squared curve so it feels even. */
+    private val ramp = object : Runnable {
+        override fun run() {
+            if (!sounding) return
+            val f = ((System.currentTimeMillis() - rampStart).toFloat() / GENTLE_MS).coerceIn(0f, 1f)
+            level = 0.04f + 0.96f * f * f
+            applyMute()
+            if (f < 1f) handler.postDelayed(this, 200)
+        }
+    }
+
     private val toneLoop = object : Runnable {
         override fun run() {
             if (sounding && !muted) runCatching { tone?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 700) }
@@ -153,7 +167,7 @@ class AlarmService : Service() {
         val ringing = s.copy(check = false)
         _state.value = ringing
         notifyState(ringing)
-        startSound(ringing.alarm)
+        startSound(ringing.alarm, gentle = false) // missed the wake-up check: no easing in
         openRingScreen()
     }
 
@@ -205,7 +219,7 @@ class AlarmService : Service() {
             buzzOnce()
             handler.postDelayed(escalate, CHECK_WINDOW_MS)
         } else {
-            startSound(alarm)
+            startSound(alarm, gentle = alarm.gentle)
         }
         openRingScreen()
     }
@@ -233,9 +247,11 @@ class AlarmService : Service() {
 
     // ---------------- Sound ----------------
 
-    private fun startSound(a: Alarm) {
+    private fun startSound(a: Alarm, gentle: Boolean) {
         if (sounding) return
         sounding = true
+        level = if (gentle) 0.04f else 1f
+        rampStart = System.currentTimeMillis()
         savedVolume = runCatching { audio.getStreamVolume(AudioManager.STREAM_ALARM) }.getOrDefault(-1)
         forceMaxVolume()
 
@@ -250,9 +266,9 @@ class AlarmService : Service() {
             tone = runCatching { ToneGenerator(AudioManager.STREAM_ALARM, ToneGenerator.MAX_VOLUME) }.getOrNull()
             handler.post(toneLoop)
         }
-        if (a.vibrate) vibrateLoop()
         handler.post(volumeGuard)
         applyMute()
+        if (gentle) handler.post(ramp)
     }
 
     private fun tryPlay(uri: Uri): Boolean = try {
@@ -284,12 +300,13 @@ class AlarmService : Service() {
         sounding = false
         handler.removeCallbacks(volumeGuard)
         handler.removeCallbacks(toneLoop)
+        handler.removeCallbacks(ramp)
         runCatching { player?.stop() }
         runCatching { player?.release() }
         player = null
         runCatching { tone?.release() }
         tone = null
-        vibrator()?.cancel()
+        stopVibrating()
         if (savedVolume >= 0) runCatching { audio.setStreamVolume(AudioManager.STREAM_ALARM, savedVolume, 0) }
         savedVolume = -1
     }
@@ -303,10 +320,10 @@ class AlarmService : Service() {
 
     private fun applyMute() {
         if (!sounding) return
-        val v = if (muted) 0f else 1f
+        val v = if (muted) 0f else level
         runCatching { player?.setVolume(v, v) }
-        if (muted) vibrator()?.cancel()
-        else if (_state.value?.alarm?.vibrate == true) vibrateLoop()
+        if (muted) stopVibrating()
+        else if (!vibrating && level > 0.25f && _state.value?.alarm?.vibrate == true) vibrateLoop() // gentle: buzz joins partway in
     }
 
     private fun vibrator(): Vibrator? =
@@ -327,7 +344,17 @@ class AlarmService : Service() {
         }
     }
 
-    private fun vibrateLoop() = vibrate(VibrationEffect.createWaveform(longArrayOf(0, 900, 600), 0))
+    private var vibrating = false
+
+    private fun vibrateLoop() {
+        vibrating = true
+        vibrate(VibrationEffect.createWaveform(longArrayOf(0, 900, 600), 0))
+    }
+
+    private fun stopVibrating() {
+        vibrating = false
+        vibrator()?.cancel()
+    }
 
     private fun buzzOnce() = vibrate(VibrationEffect.createWaveform(longArrayOf(0, 400, 250, 400), -1))
 

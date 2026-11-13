@@ -92,4 +92,16 @@ class AlarmTest {
         assertEquals("7", typeDigit("1234", '7'))   // full: start over
         assertEquals("123", typeDigit("12", '3'))
     }
+
+    @Test
+    fun bedtimeNudge() {
+        // 6:30 weekday alarm, it's Fri 06:30 now, 8 h before → Sun 22:30 (for Mon 6:30)
+        val a = Alarm(id = 1, hour = 6, minute = 30, days = 0b0011111)
+        val (nudge, ring) = Bedtime.nextNudge(listOf(a), 480, fri0630)!!
+        assertEquals(ZonedDateTime.of(2026, 11, 16, 6, 30, 0, 0, zone).toMillis(), ring)
+        assertEquals(ZonedDateTime.of(2026, 11, 15, 22, 30, 0, 0, zone).toMillis(), nudge)
+        // A one-time alarm in 3 h gets no nudge (its bedtime already passed).
+        val soon = Alarm(id = 2, hour = 9, minute = 30)
+        assertEquals(null, Bedtime.nextNudge(listOf(soon), 480, fri0630))
+    }
 }

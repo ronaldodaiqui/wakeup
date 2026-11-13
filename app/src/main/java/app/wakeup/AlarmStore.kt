@@ -15,11 +15,13 @@ object AlarmStore {
     const val TEST_ID = 0
 
     private lateinit var prefs: SharedPreferences
+    private lateinit var app: Context
     private val _alarms = MutableStateFlow<List<Alarm>>(emptyList())
     val alarms: StateFlow<List<Alarm>> = _alarms
 
     fun init(context: Context) {
         if (::prefs.isInitialized) return
+        app = context.applicationContext
         prefs = context.applicationContext.getSharedPreferences("alarms", Context.MODE_PRIVATE)
         _alarms.value = load()
     }
@@ -38,6 +40,7 @@ object AlarmStore {
         val arr = JSONArray()
         sorted.forEach { arr.put(it.toJson()) }
         prefs.edit().putString("list", arr.toString()).apply()
+        Bedtime.refresh(app)
     }
 
     fun get(id: Int): Alarm? =

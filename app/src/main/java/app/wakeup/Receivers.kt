@@ -12,6 +12,8 @@ class WakeupApp : Application() {
         AlarmStore.init(this)
         Palettes.load(this)
         Notifications.createChannels(this)
+        Bedtime.createChannel(this)
+        Bedtime.refresh(this)
     }
 }
 

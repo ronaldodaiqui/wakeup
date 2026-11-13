@@ -67,6 +67,8 @@ data class Alarm(
     val snoozeLimit: Int = 2,
     val snoozeMinutes: Int = 5,
     val wakeCheck: Boolean = false,
+    /** Fade the sound in over [GENTLE_MS] instead of starting at full blast. */
+    val gentle: Boolean = false,
 ) {
     val repeats: Boolean get() = days != 0
 
@@ -94,6 +96,7 @@ data class Alarm(
         .put("barcode", barcode).put("sound", sound).put("vibrate", vibrate)
         .put("snoozeLimit", snoozeLimit).put("snoozeMinutes", snoozeMinutes)
         .put("wakeCheck", wakeCheck)
+        .put("gentle", gentle)
 
     companion object {
         fun fromJson(o: JSONObject) = Alarm(
@@ -112,9 +115,12 @@ data class Alarm(
             snoozeLimit = o.optInt("snoozeLimit", 2),
             snoozeMinutes = o.optInt("snoozeMinutes", 5),
             wakeCheck = o.optBoolean("wakeCheck", false),
+            gentle = o.optBoolean("gentle", false),
         )
     }
 }
+
+const val GENTLE_MS = 30_000L
 
 fun ZonedDateTime.toMillis(): Long = toInstant().toEpochMilli()
 

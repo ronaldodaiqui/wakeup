@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,26 +27,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 
-/** Pick a palette. Each choice applies right away so you can see it behind the dialog. */
+/** Every palette as a tappable row. Applies right away. */
 @Composable
-fun ColorPickerDialog(onDismiss: () -> Unit) {
+fun PaletteList() {
     val ctx = LocalContext.current
     val current = Palettes.current
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Card).padding(20.dp),
-        ) {
-            Text("Colors", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            Text("Tap one to try it.", color = Dim, modifier = Modifier.padding(top = 2.dp, bottom = 14.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Palettes.all.forEach { p -> PaletteRow(p, selected = p.key == current.key) { Palettes.set(ctx, p) } }
-            }
-            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End).padding(top = 8.dp)) {
-                Text("Done")
-            }
-        }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Palettes.all.forEach { p -> PaletteRow(p, selected = p.key == current.key) { Palettes.set(ctx, p) } }
     }
 }
 
