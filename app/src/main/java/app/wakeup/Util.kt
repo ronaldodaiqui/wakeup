@@ -16,7 +16,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import java.time.DayOfWeek
@@ -26,53 +28,121 @@ import java.util.Locale
 
 // ---------------- Look ----------------
 
-// Dark, slightly lavender night with soft pastel accents.
-val Sun = Color(0xFFFFBFA3)      // peach: the main accent
-val SunSoft = Color(0xFFFFE3D6)  // pale peach
-val Lav = Color(0xFFC9B8FF)      // lavender: missions and secondary accents
-val Night = Color(0xFF15141C)
-val Card = Color(0xFF1F1E29)
-val CardHi = Color(0xFF2A2936)
-val Ink = Color(0xFFECE9F5)      // main text
-val Dim = Color(0xFFA29EB4)      // secondary text
-val OnAccent = Color(0xFF33202C) // text on peach
-val Bad = Color(0xFFFF9DAE)      // rose
-val Good = Color(0xFFA6E3C6)     // mint
+/** One color set for the whole app. All four are dark with soft accents. */
+data class Palette(
+    val key: String,
+    val name: String,
+    val credit: String,
+    val bg: Color,
+    val card: Color,
+    val cardHi: Color,
+    val ink: Color,       // main text
+    val dim: Color,       // secondary text
+    val accent: Color,    // buttons, selected things, the alarm glow
+    val accentSoft: Color,
+    val second: Color,    // missions and smaller accents
+    val onAccent: Color,  // text on accent
+    val bad: Color,
+    val good: Color,
+)
+
+object Palettes {
+    val all = listOf(
+        Palette(
+            "sunrise", "Sunrise", "Wakeup's own peach and lavender",
+            bg = Color(0xFF15141C), card = Color(0xFF1F1E29), cardHi = Color(0xFF2A2936),
+            ink = Color(0xFFECE9F5), dim = Color(0xFFA29EB4),
+            accent = Color(0xFFFFBFA3), accentSoft = Color(0xFFFFE3D6), second = Color(0xFFC9B8FF),
+            onAccent = Color(0xFF33202C), bad = Color(0xFFFF9DAE), good = Color(0xFFA6E3C6),
+        ),
+        // catppuccin.com: Mocha flavor
+        Palette(
+            "mocha", "Catppuccin Mocha", "Soft pastels on deep blue-grey",
+            bg = Color(0xFF1E1E2E), card = Color(0xFF313244), cardHi = Color(0xFF45475A),
+            ink = Color(0xFFCDD6F4), dim = Color(0xFFA6ADC8),
+            accent = Color(0xFFFAB387), accentSoft = Color(0xFFF5E0DC), second = Color(0xFFB4BEFE),
+            onAccent = Color(0xFF11111B), bad = Color(0xFFF38BA8), good = Color(0xFFA6E3A1),
+        ),
+        // rosepinetheme.com: main variant
+        Palette(
+            "rosepine", "Rosé Pine", "Dusty rose and iris on plum",
+            bg = Color(0xFF191724), card = Color(0xFF26233A), cardHi = Color(0xFF403D52),
+            ink = Color(0xFFE0DEF4), dim = Color(0xFF908CAA),
+            accent = Color(0xFFEBBCBA), accentSoft = Color(0xFFF6E3E2), second = Color(0xFFC4A7E7),
+            onAccent = Color(0xFF191724), bad = Color(0xFFEB6F92), good = Color(0xFF9CCFD8),
+        ),
+        // nordtheme.com: Polar Night, Snow Storm, Frost, Aurora
+        Palette(
+            "nord", "Nord", "Cool arctic blues, calm and quiet",
+            bg = Color(0xFF2E3440), card = Color(0xFF3B4252), cardHi = Color(0xFF4C566A),
+            ink = Color(0xFFECEFF4), dim = Color(0xFFB4BCCB),
+            accent = Color(0xFF88C0D0), accentSoft = Color(0xFFD8DEE9), second = Color(0xFFB48EAD),
+            onAccent = Color(0xFF2E3440), bad = Color(0xFFBF616A), good = Color(0xFFA3BE8C),
+        ),
+    )
+
+    private val state = mutableStateOf(all[0])
+    val current: Palette get() = state.value
+
+    fun load(ctx: Context) {
+        val key = ctx.getSharedPreferences("ui", Context.MODE_PRIVATE).getString("palette", null)
+        state.value = all.firstOrNull { it.key == key } ?: all[0]
+    }
+
+    fun set(ctx: Context, p: Palette) {
+        state.value = p
+        ctx.getSharedPreferences("ui", Context.MODE_PRIVATE).edit().putString("palette", p.key).apply()
+    }
+}
+
+// Shortcuts used everywhere. They follow the chosen palette, and screens redraw when it changes.
+val Sun: Color get() = Palettes.current.accent
+val SunSoft: Color get() = Palettes.current.accentSoft
+val Lav: Color get() = Palettes.current.second
+val Night: Color get() = Palettes.current.bg
+val Card: Color get() = Palettes.current.card
+val CardHi: Color get() = Palettes.current.cardHi
+val Ink: Color get() = Palettes.current.ink
+val Dim: Color get() = Palettes.current.dim
+val OnAccent: Color get() = Palettes.current.onAccent
+val Bad: Color get() = Palettes.current.bad
+val Good: Color get() = Palettes.current.good
 
 @Composable
 fun WakeTheme(content: @Composable () -> Unit) {
+    val p = Palettes.current
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = Sun,
-            onPrimary = OnAccent,
-            primaryContainer = Color(0xFF3B2C38),
-            onPrimaryContainer = SunSoft,
-            secondary = Lav,
-            onSecondary = Color(0xFF2A2140),
-            secondaryContainer = Color(0xFF332D4A),
-            onSecondaryContainer = Color(0xFFE6DEFF),
-            tertiary = Good,
-            background = Night,
-            onBackground = Ink,
-            surface = Night,
-            onSurface = Ink,
-            surfaceVariant = Card,
-            onSurfaceVariant = Dim,
-            surfaceContainer = Card,
-            surfaceContainerHigh = CardHi,
-            surfaceContainerHighest = CardHi,
-            surfaceContainerLow = Card,
-            surfaceContainerLowest = Night,
-            inverseSurface = Ink,
-            inverseOnSurface = Night,
-            outline = Color(0xFF3E3C4C),
-            outlineVariant = Color(0xFF2E2D3A),
-            error = Bad,
-            onError = OnAccent,
+            primary = p.accent,
+            onPrimary = p.onAccent,
+            primaryContainer = lerp(p.bg, p.accent, 0.22f),
+            onPrimaryContainer = p.accentSoft,
+            secondary = p.second,
+            onSecondary = p.onAccent,
+            secondaryContainer = lerp(p.bg, p.second, 0.22f),
+            onSecondaryContainer = p.ink,
+            tertiary = p.good,
+            background = p.bg,
+            onBackground = p.ink,
+            surface = p.bg,
+            onSurface = p.ink,
+            surfaceVariant = p.card,
+            onSurfaceVariant = p.dim,
+            surfaceContainer = p.card,
+            surfaceContainerHigh = p.cardHi,
+            surfaceContainerHighest = p.cardHi,
+            surfaceContainerLow = p.card,
+            surfaceContainerLowest = p.bg,
+            inverseSurface = p.ink,
+            inverseOnSurface = p.bg,
+            outline = lerp(p.cardHi, p.dim, 0.25f),
+            outlineVariant = p.cardHi,
+            error = p.bad,
+            onError = p.onAccent,
         ),
     ) {
         // Without a Surface, plain Text defaults to black. This makes every screen light-on-dark.
-        Surface(Modifier.fillMaxSize(), color = Night, contentColor = Ink, content = content)
+        Surface(Modifier.fillMaxSize(), color = p.bg, contentColor = p.ink, content = content)
     }
 }
 

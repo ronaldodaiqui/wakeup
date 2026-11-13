@@ -48,15 +48,22 @@ jobs:
         run: |
           set -o pipefail
           exec > >(tee publish.log) 2>&1
-          TAG="${{ github.ref_name == 'main' && 'latest' || github.ref_name }}"
           SHA="$(git rev-parse HEAD)"
-          cp app/build/outputs/apk/debug/app-debug.apk Wakeup.apk
-          gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" Wakeup.apk \
-            --target "$SHA" \
-            $([ "$TAG" != latest ] && echo --prerelease) \
-            --title "Wakeup 1.${{ github.run_number }}" \
-            --notes "Open this page on your Android phone, tap Wakeup.apk to download, then open the file to install. Built from ${SHA::7}."
+          VER="1.${{ github.run_number }}"
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            # Every build gets its own release, so each download link carries its build number.
+            TAG="v$VER"; EXTRA="--latest"
+            gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+          else
+            TAG="${{ github.ref_name }}"; EXTRA="--prerelease"
+            gh release delete "$TAG" --yes --cleanup-tag || true
+          fi
+          APK="Wakeup-$VER.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          gh release create "$TAG" "$APK" \
+            --target "$SHA" $EXTRA \
+            --title "Wakeup $VER" \
+            --notes "Open this page on your Android phone, tap $APK to download, then open the file to install. Built from ${SHA::7}."
 
       - name: Report publish errors
         if: failure()

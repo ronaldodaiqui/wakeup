@@ -83,4 +83,13 @@ class AlarmTest {
         assertEquals(19, typedTo24(19, pm = false, use24 = false))
         assertEquals(7, typedTo24(7, pm = true, use24 = true))
     }
+
+    @Test
+    fun typingOverAWrongTime() {
+        assertEquals("253", typeDigit("25", '3'))   // 25 is wrong, but 2:53 is real
+        assertEquals("5", typeDigit("1275", '5'))   // dead end: start over
+        assertEquals("8", typeDigit("975", '8'))    // 9:75 can't be fixed
+        assertEquals("7", typeDigit("1234", '7'))   // full: start over
+        assertEquals("123", typeDigit("12", '3'))
+    }
 }

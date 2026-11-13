@@ -88,6 +88,14 @@ fun parseTyped(digits: String): Pair<Int, Int>? {
     return if (h in 0..23 && m in 0..59) h to m else null
 }
 
+/** True if these digits are a real time, or could still become one with more digits. */
+fun canBecomeTime(digits: String): Boolean =
+    parseTyped(digits) != null || (digits.length < 4 && ('0'..'9').any { canBecomeTime(digits + it) })
+
+/** Next digit: keeps typing, or starts a fresh time if the current one is full or a dead end. */
+fun typeDigit(digits: String, d: Char): String =
+    if (digits.length >= 4 || !canBecomeTime(digits)) d.toString() else digits + d
+
 /** Typed hour → 24 h, using AM/PM when it's ambiguous (1–12). */
 fun typedTo24(h: Int, pm: Boolean, use24: Boolean): Int = when {
     use24 || h > 12 -> h
@@ -127,7 +135,7 @@ fun TimeEntryDialog(hour: Int, minute: Int, onDone: (Int, Int) -> Unit, onDismis
                     main, fontSize = 64.sp, fontWeight = FontWeight.Bold,
                     color = when {
                         digits.isEmpty() -> Dim
-                        typed == null -> Bad
+                        typed == null -> if (canBecomeTime(digits)) Dim else Bad
                         else -> Ink
                     },
                 )
@@ -137,11 +145,12 @@ fun TimeEntryDialog(hour: Int, minute: Int, onDone: (Int, Int) -> Unit, onDismis
             }
             Text(
                 when {
-                    typed == null && digits.isNotEmpty() -> "That's not a real time"
+                    typed == null && digits.isNotEmpty() && !canBecomeTime(digits) -> "Not a real time. Just type a new one."
+                    typed == null && digits.isNotEmpty() -> "Keep typing…"
                     digits.isEmpty() -> "e.g. 730 for 7:30, 1234 for 12:34"
                     else -> " "
                 },
-                color = if (typed == null && digits.isNotEmpty()) Bad else Dim,
+                color = if (digits.isNotEmpty() && !canBecomeTime(digits)) Bad else Dim,
                 style = MaterialTheme.typography.bodySmall,
             )
 
@@ -168,7 +177,7 @@ fun TimeEntryDialog(hour: Int, minute: Int, onDone: (Int, Int) -> Unit, onDismis
 
             Spacer(Modifier.height(16.dp))
             NumberPad(
-                onDigit = { if (digits.length < 4) digits += it },
+                onDigit = { digits = typeDigit(digits, it) },
                 onDelete = { digits = digits.dropLast(1) },
                 onEnter = { result?.let { (h, m) -> onDone(h, m) } },
                 enterEnabled = result != null,

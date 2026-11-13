@@ -10,6 +10,7 @@ class WakeupApp : Application() {
     override fun onCreate() {
         super.onCreate()
         AlarmStore.init(this)
+        Palettes.load(this)
         Notifications.createChannels(this)
     }
 }

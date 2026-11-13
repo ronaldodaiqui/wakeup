@@ -38,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -139,6 +140,8 @@ private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSetup: () ->
     val setupOk = remember(resumeTick) { Setup.essentialOk(ctx) }
     val next = remember(alarms, now) { Scheduler.nextRing(alarms) }
     var typingFor by remember { mutableStateOf<Alarm?>(null) }
+    var pickingColors by remember { mutableStateOf(false) }
+    if (pickingColors) ColorPickerDialog(onDismiss = { pickingColors = false })
 
     typingFor?.let { a ->
         TimeEntryDialog(
@@ -190,6 +193,7 @@ private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSetup: () ->
                             )
                         }
                     }
+                    IconButton(onClick = { pickingColors = true }) { Icon(Icons.Filled.Palette, "Colors", tint = Dim) }
                     IconButton(onClick = onSetup) { Icon(Icons.Filled.Settings, "Setup", tint = Dim) }
                 }
             }
