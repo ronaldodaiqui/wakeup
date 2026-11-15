@@ -39,11 +39,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -125,7 +127,8 @@ fun AlarmEditor(initial: Alarm, isNew: Boolean, close: () -> Unit) {
         close()
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
+    Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
+    Column(Modifier.fillMaxSize()) {
         // Top bar
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = close) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Cancel") }
@@ -133,9 +136,6 @@ fun AlarmEditor(initial: Alarm, isNew: Boolean, close: () -> Unit) {
                 if (isNew) "New alarm" else "Edit alarm",
                 style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f),
             )
-            Button(onClick = ::save, modifier = Modifier.padding(end = 8.dp)) {
-                Text("Save", fontWeight = FontWeight.SemiBold)
-            }
         }
 
         Column(
@@ -287,8 +287,19 @@ fun AlarmEditor(initial: Alarm, isNew: Boolean, close: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().height(52.dp).padding(top = 4.dp),
                 ) { Text("Delete alarm", color = Bad) }
             }
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(104.dp)) // room to scroll past the Save button
         }
+    }
+
+        // Save sits bottom-right, where your thumb is.
+        ExtendedFloatingActionButton(
+            onClick = ::save,
+            icon = { Icon(Icons.Filled.Check, null) },
+            text = { Text("Save", fontWeight = FontWeight.SemiBold, fontSize = 18.sp) },
+            containerColor = Sun,
+            contentColor = OnAccent,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
+        )
     }
 
     if (scanning) {

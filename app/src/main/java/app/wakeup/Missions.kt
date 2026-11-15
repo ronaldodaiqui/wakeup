@@ -333,7 +333,8 @@ fun ShakeMission(target: Int, onActivity: () -> Unit, onDone: () -> Unit) {
     val has = SensorListener(Sensor.TYPE_ACCELEROMETER) { e ->
         val g = sqrt(e.values[0] * e.values[0] + e.values[1] * e.values[1] + e.values[2] * e.values[2]) / SensorManager.GRAVITY_EARTH
         val now = System.currentTimeMillis()
-        if (g > 2.1f && now - last[0] > 220 && !finished) {
+        // A real, hard shake: about 2.8× gravity, and at most ~3 per second.
+        if (g > 2.8f && now - last[0] > 300 && !finished) {
             last[0] = now
             count++
             onActivity()

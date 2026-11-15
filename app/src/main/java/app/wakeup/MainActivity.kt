@@ -12,6 +12,23 @@ import androidx.activity.compose.setContent
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.DpOffset
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -168,8 +185,22 @@ private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSettings: ()
         )
     }
 
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = {
+            SnackbarHost(snackbar) { data ->
+                Snackbar(
+                    data,
+                    containerColor = CardHi,
+                    contentColor = Ink,
+                    actionColor = Sun,
+                    shape = RoundedCornerShape(16.dp),
+                )
+            }
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onNew,
@@ -233,6 +264,29 @@ private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSettings: ()
                     a, now,
                     onClick = { onEdit(a) },
                     onTimeClick = { typingFor = a },
+                    onDuplicate = {
+                        val copy = AlarmStore.put(a.copy(id = 0))
+                        Scheduler.schedule(ctx, copy)
+                        Toast.makeText(ctx, "Alarm copied", Toast.LENGTH_SHORT).show()
+                    },
+                    onTest = {
+                        AlarmStore.setTestAlarm(a)
+                        AlarmService.start(ctx, AlarmStore.TEST_ID, Scheduler.KIND_RING)
+                    },
+                    onDelete = {
+                        Scheduler.cancelAll(ctx, a.id)
+                        AlarmStore.delete(a.id)
+                        scope.launch {
+                            snackbar.currentSnackbarData?.dismiss()
+                            val r = snackbar.showSnackbar(
+                                "Alarm deleted", actionLabel = "Undo", duration = SnackbarDuration.Short,
+                            )
+                            if (r == SnackbarResult.ActionPerformed) {
+                                val back = AlarmStore.put(a)
+                                Scheduler.schedule(ctx, back)
+                            }
+                        }
+                    },
                     onToggle = { on ->
                         val updated = AlarmStore.put(a.copy(enabled = on))
                         if (on) {
@@ -249,20 +303,38 @@ private fun AlarmList(onNew: () -> Unit, onEdit: (Alarm) -> Unit, onSettings: ()
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AlarmCard(a: Alarm, now: Long, onClick: () -> Unit, onTimeClick: () -> Unit, onToggle: (Boolean) -> Unit) {
+private fun AlarmCard(
+    a: Alarm,
+    now: Long,
+    onClick: () -> Unit,
+    onTimeClick: () -> Unit,
+    onDuplicate: () -> Unit,
+    onTest: () -> Unit,
+    onDelete: () -> Unit,
+    onToggle: (Boolean) -> Unit,
+) {
     val ctx = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    var menuOpen by remember { mutableStateOf(false) }
+    val openMenu = {
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        menuOpen = true
+    }
+    Box {
     val (t, ap) = timeParts(ctx, a.hour, a.minute)
     val faded = if (a.enabled) 1f else 0.45f
     val snoozeAt = AlarmStore.snoozeUntil(a.id)
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Card)
-            .clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 14.dp),
+            .combinedClickable(onClick = onClick, onLongClick = openMenu)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Row(
-                Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onTimeClick),
+                Modifier.clip(RoundedCornerShape(10.dp)).combinedClickable(onClick = onTimeClick, onLongClick = openMenu),
                 verticalAlignment = Alignment.Bottom,
             ) {
                 Text(t, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = faded))
@@ -293,6 +365,30 @@ private fun AlarmCard(a: Alarm, now: Long, onClick: () -> Unit, onTimeClick: () 
             onCheckedChange = onToggle,
             colors = SwitchDefaults.colors(checkedTrackColor = Sun),
         )
+    }
+    DropdownMenu(
+        expanded = menuOpen,
+        onDismissRequest = { menuOpen = false },
+        offset = DpOffset(16.dp, 0.dp),
+        containerColor = CardHi,
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        DropdownMenuItem(
+            text = { Text("Duplicate") },
+            leadingIcon = { Icon(Icons.Filled.ContentCopy, null, tint = Dim) },
+            onClick = { menuOpen = false; onDuplicate() },
+        )
+        DropdownMenuItem(
+            text = { Text("Test it now") },
+            leadingIcon = { Icon(Icons.Filled.PlayArrow, null, tint = Dim) },
+            onClick = { menuOpen = false; onTest() },
+        )
+        DropdownMenuItem(
+            text = { Text("Delete", color = Bad) },
+            leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Bad) },
+            onClick = { menuOpen = false; onDelete() },
+        )
+    }
     }
 }
 
